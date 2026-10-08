@@ -1,6 +1,6 @@
-"""Prototype: ukulele chord shape finder (mirrors the JS logic)"""
+"""Prototype: guitar chord shape finder (mirrors the JS logic)"""
 
-TUNING = [67, 60, 64, 69]  # G4 C4 E4 A4
+TUNING = [40, 45, 50, 55, 59, 64]  # E2 A2 D3 G3 B3 E4
 MAX_FRET = 12
 
 CHORDS = {
@@ -56,8 +56,10 @@ def find_shapes(root_pc, chord_id):
         for b in range(MAX_FRET + 1):
             for c in range(MAX_FRET + 1):
                 for d in range(MAX_FRET + 1):
-                    frets = [a, b, c, d]
-                    pcs = [(TUNING[i] + frets[i]) % 12 for i in range(4)]
+                    for e in range(MAX_FRET + 1):
+                        for f in range(MAX_FRET + 1):
+                            frets = [a, b, c, d, e, f]
+                            pcs = [(TUNING[i] + frets[i]) % 12 for i in range(6)]
                     if not all(p in allowed for p in pcs):
                         continue
                     if not all(p in pcs for p in essential):

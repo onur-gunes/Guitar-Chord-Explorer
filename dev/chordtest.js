@@ -1,5 +1,5 @@
-// Prototype: ukulele chord shape finder
-const TUNING = [67, 60, 64, 69]; // G4 C4 E4 A4
+// Prototype: guitar chord shape finder
+const TUNING = [40,45,50,55,59,64]; // E2 A2 D3 G3 B3 E4
 const MAX_FRET = 12;
 
 // [semitone, letterOffset, accidental]
@@ -51,11 +51,13 @@ function findShapes(rootPc, chordId) {
   const allowed = new Set(chord.tones.map(t => t[0] % 12));
   const essential = essentialSet(chord.tones);
   const shapes = [];
-  const f = [0, 0, 0, 0];
+  const f = [0, 0, 0, 0, 0, 0];
   for (f[0] = 0; f[0] <= MAX_FRET; f[0]++)
   for (f[1] = 0; f[1] <= MAX_FRET; f[1]++)
   for (f[2] = 0; f[2] <= MAX_FRET; f[2]++)
-  for (f[3] = 0; f[3] <= MAX_FRET; f[3]++) {
+  for (f[3] = 0; f[3] <= MAX_FRET; f[3]++)
+  for (f[4] = 0; f[4] <= MAX_FRET; f[4]++)
+  for (f[5] = 0; f[5] <= MAX_FRET; f[5]++) {
     const pcs = f.map((fr, i) => (TUNING[i] + fr) % 12);
     let ok = true;
     for (const pc of pcs) if (!allowed.has(pc)) { ok = false; break; }
@@ -73,7 +75,7 @@ function findShapes(rootPc, chordId) {
     if (fa !== fb) return fa - fb;
     const ma = Math.max(...a), mb = Math.max(...b);
     if (ma !== mb) return ma - mb;
-    for (let i = 0; i < 4; i++) if (a[i] !== b[i]) return a[i] - b[i];
+    for (let i = 0; i < 6; i++) if (a[i] !== b[i]) return a[i] - b[i];
     return 0;
   });
   return shapes;

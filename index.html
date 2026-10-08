@@ -354,7 +354,7 @@ main { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: 
     var minF = nz.length ? Math.min.apply(null, nz) : 0;
     
     var hasOpen = frets.indexOf(0) >= 0;
-    var maxF = Math.max.apply(null, Math.max.apply(null, frets.filter(function(f){return f>0;})) || 0);
+    var maxF = Math.max.apply(null, frets.filter(function(f){return f>0;})) || 0;
     var lo = maxF <= 4 ? 0 : Math.max(minF - 1, 0);
     var showNut = lo === 0;
     var hi = Math.max(maxF + 1, lo + 4);
@@ -692,7 +692,7 @@ main { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: 
     document.getElementById('shapes').innerHTML = shown.length
       ? (shown.map(function (f, i) {
           var svg = diagramSVG(f);
-          return '<div class="shape" style="animation-delay:' + Math.min(i * 25, 350) + 'ms">' +
+          return '<div class="shape" style="animation-delay:' + Math.min(i * 25, 350) + 'ms" data-frets="' + f.join(' ') + '">' +
             svg + '<div class="fr">' + f.join(' ') + '</div></div>';
         }).join('') + ((shapes.length > shown.length) ? '<div class="more">Showing top ' + shown.length + ' of ' + shapes.length + '</div>' : ''))
       : '<div class="empty">No six-string voicing found below the 12th fret.</div>';

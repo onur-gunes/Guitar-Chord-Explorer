@@ -1,6 +1,6 @@
 # Guitar Chord Explorer
 
-[![Deploy to GitHub Pages](https://github.com/onur-gunes/Ukulele-Chord-Explorer/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/onur-gunes/Ukulele-Chord-Explorer/actions/workflows/deploy-pages.yml)
+[![Deploy to GitHub Pages](https://github.com/onur-gunes/Guitar-Chord-Explorer/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/onur-gunes/Guitar-Chord-Explorer/actions/workflows/deploy-pages.yml)
 
 ![Guitar Chord Explorer screenshot](shots/desktop.png)
 

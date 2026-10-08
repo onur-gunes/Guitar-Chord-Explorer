@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Ukulele Chord Explorer</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d1014;
+  --panel: #14181f;
+  --panel2: #191f28;
+  --border: #242c37;
+  --border2: #323c4b;
+  --text: #e9edf3;
+  --muted: #98a2b3;
+  --dim: #6b7583;
+  --accent: #f2b544;
+  --accent-ink: #14171d;
+  --wo: #1b222c;
+  --wi: #151b24;
+  --wo-h: #252f3d;
+  --wi-h: #1e2733;
+}
+html { scroll-behavior: smooth; }
+body {
+  min-height: 100vh;
+  background: radial-gradient(1100px 560px at 50% -12%, #191f2a 0%, var(--bg) 62%) fixed, var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1160px; margin: 0 auto; padding: 0 22px 70px; }
+header {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  padding: 26px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 26px;
+}
+h1 { font-size: 19px; font-weight: 650; letter-spacing: -0.01em; }
+.sub { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+.tuning {
+  font-size: 12px; letter-spacing: 0.2em; color: var(--muted);
+  border: 1px solid var(--border); background: var(--panel);
+  padding: 7px 14px; border-radius: 999px; white-space: nowrap;
+}
+main { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: start; }
+.circle-panel { position: sticky; top: 14px; }
+.circle-panel svg { display: block; width: 100%; height: auto; }
+.hint-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 8px; font-size: 12.5px; color: var(--muted);
+}
+.acc-btn {
+  font: inherit; font-size: 12.5px; color: var(--accent);
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap;
+  transition: border-color .15s, background .15s;
+}
+.acc-btn:hover { border-color: var(--accent); background: rgba(242,181,68,.08); }
+.wg { stroke: var(--bg); stroke-width: 2.5; cursor: pointer; transition: fill .15s ease; }
+.wmaj { fill: var(--wo); }
+.wmin { fill: var(--wi); }
+[data-kind]:not(.sel):hover .wg { fill: var(--wo-h); }
+[data-kind="min"]:not(.sel):hover .wg { fill: var(--wi-h); }
+[data-kind]:focus { outline: none; }
+[data-kind]:focus-visible .wg { stroke: var(--accent); stroke-width: 3; }
+.lbl-o { fill: #dde4ee; font-size: 16px; font-weight: 600; pointer-events: none; }
+.lbl-i { fill: #93a0b4; font-size: 12.5px; font-weight: 500; pointer-events: none; }
+.sel .wg { fill: var(--accent); }
+.sel .lbl-o, .sel .lbl-i { fill: var(--accent-ink); font-weight: 700; }
+.ctr { fill: #0f131a; stroke: var(--border); stroke-width: 1.5; }
+.ctr-name { font-size: 28px; font-weight: 700; text-anchor: middle; fill: var(--text); }
+.ctr-name .rt { fill: var(--accent); }
+.ctr-notes { font-size: 11.5px; text-anchor: middle; fill: var(--muted); letter-spacing: .07em; }
+.label {
+  font-size: 11.5px; font-weight: 650; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--dim); margin-bottom: 11px;
+}
+.block { margin-bottom: 24px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font: inherit; font-size: 13.5px; padding: 7px 15px; cursor: pointer;
+  background: var(--panel2); border: 1px solid var(--border); border-radius: 999px;
+  color: var(--muted); transition: color .15s, border-color .15s, background .15s;
+}
+.chip:hover { color: var(--text); border-color: var(--border2); }
+.chip.active {
+  background: var(--accent); border-color: var(--accent);
+  color: var(--accent-ink); font-weight: 650;
+}
+.notes { display: flex; flex-wrap: wrap; gap: 9px; }
+.note {
+  min-width: 56px; text-align: center; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 11px; padding: 7px 10px 6px;
+}
+.note b { display: block; font-size: 15.5px; font-weight: 650; }
+.note.root b { color: var(--accent); }
+.note span { display: block; font-size: 10.5px; color: var(--dim); margin-top: 2px; }
+.shapes-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin: 30px 0 15px; padding-top: 24px; border-top: 1px solid var(--border);
+}
+.shapes-head h3 { font-size: 15.5px; font-weight: 600; }
+.shapes-head h3 .cn { color: var(--accent); }
+.shapes-head .cnt { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.shapes {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(134px, 1fr)); gap: 14px;
+}
+.shape {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 15px;
+  padding: 13px 8px 10px; display: flex; flex-direction: column; align-items: center; gap: 7px;
+  transition: border-color .15s, transform .15s;
+  animation: rise .3s ease both;
+}
+.shape:hover { border-color: var(--border2); transform: translateY(-2px); }
+.shape svg { width: 100%; max-width: 116px; height: auto; display: block; }
+.shape .fr {
+  font-size: 11.5px; color: var(--dim); letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+}
+.st { stroke: #3c4655; stroke-width: 1.4; }
+.fw { stroke: #333c49; stroke-width: 1.4; }
+.nut { stroke: #c9d2df; stroke-width: 4.5; stroke-linecap: round; }
+.dot, .bar { fill: var(--accent); }
+.oc { fill: none; stroke: #6b7686; stroke-width: 1.7; }
+.pos {
+  fill: #6b7686; font-size: 11px; font-weight: 700;
+  text-anchor: middle; dominant-baseline: central;
+}
+.empty {
+  grid-column: 1 / -1; text-align: center; color: var(--muted); font-size: 14px;
+  border: 1px dashed var(--border); border-radius: 15px; padding: 30px 18px;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@media (max-width: 940px) {
+  main { grid-template-columns: 1fr; gap: 26px; }
+  .circle-panel { position: static; max-width: 380px; margin: 0 auto; width: 100%; }
+  header { flex-direction: column; align-items: flex-start; gap: 12px; }
+}
+@media (max-width: 480px) {
+  .wrap { padding: 0 14px 56px; }
+  .shapes { grid-template-columns: repeat(auto-fill, minmax(122px, 1fr)); gap: 11px; }
+  .chip { font-size: 13px; padding: 6px 13px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Ukulele Chord Explorer</h1>
+      <div class="sub">Every way to play any chord, on every fret</div>
+    </div>
+    <div class="tuning" title="Standard re-entrant tuning">G &nbsp;C &nbsp;E &nbsp;A</div>
+  </header>
+  <main>
+    <section class="circle-panel" id="circlePanel"></section>
+    <section class="info-panel" id="infoPanel">
+      <div class="block">
+        <div class="label">Chord type</div>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="block">
+        <div class="label">Notes</div>
+        <div class="notes" id="notes"></div>
+      </div>
+      <div class="shapes-head">
+        <h3><span class="cn" id="shapeName">C</span></h3>
+        <div class="cnt" id="shapeCount"></div>
+      </div>
+      <div class="shapes" id="shapes"></div>
+    </section>
+  </main>
+</div>
+<script>
+(function () {
+  var TUNING = [67, 60, 64, 69];
+  var MAX_FRET = 12;
+  var LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  var LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
+  var ACC_STR = { '-2': '\u266d\u266d', '-1': '\u266d', 0: '', 1: '\u266f', 2: '\u266f\u266f' };
+  var ENHARMONIC = { 1: ['C\u266f', 'D\u266d'], 3: ['D\u266f', 'E\u266d'], 6: ['F\u266f', 'G\u266d'], 8: ['G\u266f', 'A\u266d'], 10: ['A\u266f', 'B\u266d'] };
+
+  var TYPES = [
+    { id: 'maj', label: 'major', suffix: '', degrees: ['root', '3', '5'], tones: [[0, 0], [4, 2], [7, 4]] },
+    { id: 'm', label: 'minor', suffix: 'm', degrees: ['root', '\u266d3', '5'], tones: [[0, 0], [3, 2], [7, 4]] },
+    { id: '7', label: '7', suffix: '7', degrees: ['root', '3', '5', '\u266d7'], tones: [[0, 0], [4, 2], [7, 4], [10, 6]] },
+    { id: 'maj7', label: 'maj7', suffix: 'maj7', degrees: ['root', '3', '5', '7'], tones: [[0, 0], [4, 2], [7, 4], [11, 6]] },
+    { id: 'm7', label: 'm7', suffix: 'm7', degrees: ['root', '\u266d3', '5', '\u266d7'], tones: [[0, 0], [3, 2], [7, 4], [10, 6]] },
+    { id: 'sus4', label: 'sus4', suffix: 'sus4', degrees: ['root', '4', '5'], tones: [[0, 0], [5, 3], [7, 4]] },
+    { id: 'sus2', label: 'sus2', suffix: 'sus2', degrees: ['root', '2', '5'], tones: [[0, 0], [2, 1], [7, 4]] },
+    { id: '7sus4', label: '7sus4', suffix: '7sus4', degrees: ['root', '4', '5', '\u266d7'], tones: [[0, 0], [5, 3], [7, 4], [10, 6]] },
+    { id: '6', label: '6', suffix: '6', degrees: ['root', '3', '5', '6'], tones: [[0, 0], [4, 2], [7, 4], [9, 5]] },
+    { id: 'm6', label: 'm6', suffix: 'm6', degrees: ['root', '\u266d3', '5', '6'], tones: [[0, 0], [3, 2], [7, 4], [9, 5]] },
+    { id: '9', label: '9', suffix: '9', degrees: ['root', '3', '5', '\u266d7', '9'], tones: [[0, 0], [4, 2], [7, 4], [10, 6], [14, 8]] },
+    { id: 'm9', label: 'm9', suffix: 'm9', degrees: ['root', '\u266d3', '5', '\u266d7', '9'], tones: [[0, 0], [3, 2], [7, 4], [10, 6], [14, 8]] },
+    { id: 'maj9', label: 'maj9', suffix: 'maj9', degrees: ['root', '3', '5', '7', '9'], tones: [[0, 0], [4, 2], [7, 4], [11, 6], [14, 8]] },
+    { id: 'add9', label: 'add9', suffix: 'add9', degrees: ['root', '3', '5', '9'], tones: [[0, 0], [4, 2], [7, 4], [14, 8]] },
+    { id: 'dim', label: 'dim', suffix: 'dim', degrees: ['root', '\u266d3', '\u266d5'], tones: [[0, 0], [3, 2], [6, 4]] },
+    { id: 'dim7', label: 'dim7', suffix: 'dim7', degrees: ['root', '\u266d3', '\u266d5', '\u266d\u266d7'], tones: [[0, 0], [3, 2], [6, 4], [9, 6]] },
+    { id: 'aug', label: 'aug', suffix: 'aug', degrees: ['root', '3', '\u266f5'], tones: [[0, 0], [4, 2], [8, 4]] },
+    { id: 'm7b5', label: 'm7\u266d5', suffix: 'm7\u266d5', degrees: ['root', '\u266d3', '\u266d5', '\u266d7'], tones: [[0, 0], [3, 2], [6, 4], [10, 6]] }
+  ];
+  var MINOR_IDS = ['m', 'm7', 'm6', 'm9', 'm7b5'];
+  var CIRCLE = [
+    { maj: ['C'], min: ['Am'] },
+    { maj: ['G'], min: ['Em'] },
+    { maj: ['D'], min: ['Bm'] },
+    { maj: ['A'], min: ['F\u266fm'] },
+    { maj: ['E'], min: ['C\u266fm'] },
+    { maj: ['B'], min: ['G\u266fm'] },
+    { maj: ['F\u266f', 'G\u266d'], min: ['D\u266fm', 'E\u266dm'] },
+    { maj: ['D\u266d'], min: ['B\u266dm'] },
+    { maj: ['A\u266d'], min: ['Fm'] },
+    { maj: ['E\u266d'], min: ['Cm'] },
+    { maj: ['B\u266d'], min: ['Gm'] },
+    { maj: ['F'], min: ['Dm'] }
+  ];
+
+  var state = { rootPc: 0, rootName: 'C', quality: 'maj', spelling: 'sharp' };
+
+  function typeOf(id) {
+    for (var i = 0; i < TYPES.length; i++) if (TYPES[i].id === id) return TYPES[i];
+    return TYPES[0];
+  }
+  function parseName(n) {
+    var s = n;
+    if (s.length > 1 && s.charAt(s.length - 1) === 'm') s = s.slice(0, -1);
+    var li = LETTERS.indexOf(s.charAt(0));
+    var alt = 0;
+    if (s.charAt(1) === '\u266f') alt = 1;
+    else if (s.charAt(1) === '\u266d') alt = -1;
+    var pc = ((LETTER_PC[li] + alt) % 12 + 12) % 12;
+    return { pc: pc, letter: li, alt: alt };
+  }
+  function noteName(rootPc, rootLetter, tone) {
+    var target = (rootPc + tone[0]) % 12;
+    var li = (rootLetter + tone[1]) % 7;
+    var d = target - LETTER_PC[li];
+    if (d > 6) d -= 12;
+    if (d < -6) d += 12;
+    return LETTERS[li] + (ACC_STR[String(d)] || '');
+  }
+  function chordNotes() {
+    var t = typeOf(state.quality);
+    var p = parseName(state.rootName);
+    return t.tones.map(function (tone, i) {
+      return { name: noteName(state.rootPc, p.letter, tone), degree: t.degrees[i] };
+    });
+  }
+  function playable(frets, relaxed) {
+    var nz = frets.filter(function (f) { return f > 0; });
+    if (!nz.length) return true;
+    var uniq = nz.filter(function (v, i) { return nz.indexOf(v) === i; }).sort(function (a, b) { return a - b; });
+    var span = uniq[uniq.length - 1] - uniq[0];
+    if (relaxed) return uniq.length <= 4 && span <= 5;
+    var open = frets.indexOf(0) >= 0;
+    if (open) return span <= 3;
+    if (span <= 3) return true;
+    return nz.filter(function (f) { return f === uniq[0]; }).length >= 2 && uniq.length <= 4 && span <= 5;
+  }
+  function spanOf(arr) {
+    var nz = arr.filter(function (v) { return v > 0; });
+    if (!nz.length) return 0;
+    return Math.max.apply(null, nz) - Math.min.apply(null, nz);
+  }
+  function findShapes(rootPc, quality, relaxed) {
+    var t = typeOf(quality);
+    var allowed = {};
+    t.tones.forEach(function (tone) { allowed[(rootPc + tone[0]) % 12] = 1; });
+    var essentialTones = t.tones.length > 4
+      ? t.tones.filter(function (_, i) { return i !== 2; })
+      : t.tones;
+    var essential = essentialTones.map(function (tone) { return (rootPc + tone[0]) % 12; });
+    var out = [];
+    for (var a = 0; a <= MAX_FRET; a++)
+    for (var b = 0; b <= MAX_FRET; b++)
+    for (var c = 0; c <= MAX_FRET; c++)
+    for (var d = 0; d <= MAX_FRET; d++) {
+      var f = [a, b, c, d];
+      var pcs = [(TUNING[0] + a) % 12, (TUNING[1] + b) % 12, (TUNING[2] + c) % 12, (TUNING[3] + d) % 12];
+      var ok = true;
+      for (var k = 0; k < 4; k++) if (!allowed[pcs[k]]) { ok = false; break; }
+      if (!ok) continue;
+      var cov = true;
+      for (var e = 0; e < essential.length; e++) if (pcs.indexOf(essential[e]) < 0) { cov = false; break; }
+      if (!cov) continue;
+      if (!playable(f, relaxed)) continue;
+      out.push(f);
+    }
+    out.sort(function (x, y) {
+      var mx = Math.max.apply(null, x) - Math.max.apply(null, y);
+      if (mx) return mx;
+      var fx = x.filter(function (v) { return v > 0; }).length - y.filter(function (v) { return v > 0; }).length;
+      if (fx) return fx;
+      var sx = spanOf(x) - spanOf(y);
+      if (sx) return sx;
+      for (var i = 0; i < 4; i++) if (x[i] !== y[i]) return x[i] - y[i];
+      return 0;
+    });
+    return out;
+  }
+
+  function diagramSVG(frets) {
+    var W = 104, padX = 22, top = 26, fg = 21;
+    var gap = (W - 2 * padX) / 3;
+    var nz = frets.filter(function (f) { return f > 0; });
+    var minF = nz.length ? Math.min.apply(null, nz) : 0;
+    var hasOpen = frets.indexOf(0) >= 0;
+    var showNut = Math.max.apply(null, frets) <= 4;
+    var lo = showNut ? 0 : minF;
+    var hi = Math.max.apply(null, frets);
+    if (hi - lo < 3) hi = lo + 3;
+    var rows = hi - lo;
+    var H = top + rows * fg + 12;
+    var yWire = function (f) { return top + (f - lo) * fg; };
+    var yDot = function (f) { return top + (f - lo) * fg + fg / 2; };
+    var xStr = function (i) { return padX + i * gap; };
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
+    var strTop = hasOpen ? top - 15 : yWire(lo);
+    for (var i = 0; i < 4; i++) {
+      s += '<line class="st" x1="' + xStr(i) + '" y1="' + strTop + '" x2="' + xStr(i) + '" y2="' + yWire(hi) + '"/>';
+    }
+    for (var f = Math.max(lo, 1); f <= hi; f++) {
+      s += '<line class="fw" x1="' + (xStr(0) - 6) + '" y1="' + yWire(f) + '" x2="' + (xStr(3) + 6) + '" y2="' + yWire(f) + '"/>';
+    }
+    if (showNut) {
+      s += '<line class="nut" x1="' + (xStr(0) - 6) + '" y1="' + yWire(0) + '" x2="' + (xStr(3) + 6) + '" y2="' + yWire(0) + '"/>';
+    } else {
+      s += '<text class="pos" x="9" y="' + yDot(lo) + '">' + lo + '</text>';
+    }
+    var groups = {};
+    frets.forEach(function (v, idx) {
+      if (v === 0) return;
+      (groups[v] = groups[v] || []).push(idx);
+    });
+    var covered = {};
+    Object.keys(groups).forEach(function (key) {
+      var v = Number(key), idxs = groups[key], run = [idxs[0]];
+      var flush = function () {
+        if (run.length >= 2) {
+          var x1 = xStr(run[0]), x2 = xStr(run[run.length - 1]);
+          s += '<rect class="bar" x="' + (x1 - 7) + '" y="' + (yDot(v) - 7) + '" width="' + (x2 - x1 + 14) + '" height="14" rx="7"/>';
+          run.forEach(function (ix) { covered[ix] = 1; });
+        }
+      };
+      for (var j = 1; j < idxs.length; j++) {
+        if (idxs[j] === idxs[j - 1] + 1) run.push(idxs[j]);
+        else { flush(); run = [idxs[j]]; }
+      }
+      flush();
+    });
+    frets.forEach(function (fr, idx) {
+      if (covered[idx]) return;
+      if (fr === 0) s += '<circle class="oc" cx="' + xStr(idx) + '" cy="' + (top - 9) + '" r="4.5"/>';
+      else s += '<circle class="dot" cx="' + xStr(idx) + '" cy="' + yDot(fr) + '" r="7"/>';
+    });
+    return s + '</svg>';
+  }
+
+  function polar(r, deg) {
+    var a = deg * Math.PI / 180;
+    return [200 + r * Math.cos(a), 200 + r * Math.sin(a)];
+  }
+  function fx(n) { return n.toFixed(1); }
+  function sector(r1, r2, a1, a2) {
+    var p = polar(r2, a1), q = polar(r2, a2), r = polar(r1, a2), s = polar(r1, a1);
+    return 'M' + fx(p[0]) + ' ' + fx(p[1]) +
+      'A' + r2 + ' ' + r2 + ' 0 0 1 ' + fx(q[0]) + ' ' + fx(q[1]) +
+      'L' + fx(r[0]) + ' ' + fx(r[1]) +
+      'A' + r1 + ' ' + r1 + ' 0 0 0 ' + fx(s[0]) + ' ' + fx(s[1]) + 'Z';
+  }
+  function pickName(arr) {
+    if (arr.length === 1) return arr[0];
+    return state.spelling === 'sharp' ? arr[0] : arr[1];
+  }
+  var MAJOR_PCS = CIRCLE.map(function (e) { return parseName(e.maj[0]).pc; });
+  var MINOR_PCS = CIRCLE.map(function (e) { return parseName(e.min[0]).pc; });
+
+  function buildCircle() {
+    var s = '<svg viewBox="0 0 400 400" role="group" aria-label="Circle of fifths">';
+    CIRCLE.forEach(function (entry, i) {
+      var a1 = -105 + i * 30, a2 = a1 + 30, mid = a1 + 15;
+      var majName = pickName(entry.maj), minName = pickName(entry.min);
+      var o = polar(159, mid), m = polar(103, mid);
+      s += '<g data-kind="maj" data-i="' + i + '" tabindex="0" role="button" aria-label="' + majName + ' major">' +
+        '<path class="wg wmaj" d="' + sector(132, 186, a1, a2) + '"/>' +
+        '<text class="lbl-o" x="' + fx(o[0]) + '" y="' + fx(o[1]) + '" dominant-baseline="middle" text-anchor="middle">' + majName + '</text></g>';
+      s += '<g data-kind="min" data-i="' + i + '" tabindex="0" role="button" aria-label="' + minName + ' minor">' +
+        '<path class="wg wmin" d="' + sector(76, 130, a1, a2) + '"/>' +
+        '<text class="lbl-i" x="' + fx(m[0]) + '" y="' + fx(m[1]) + '" dominant-baseline="middle" text-anchor="middle">' + minName + '</text></g>';
+    });
+    s += '<circle class="ctr" cx="200" cy="200" r="74"/>' +
+      '<text class="ctr-name" id="ctrName" x="200" y="196"></text>' +
+      '<text class="ctr-notes" id="ctrNotes" x="200" y="221"></text></svg>';
+    document.getElementById('circlePanel').innerHTML =
+      s + '<div class="hint-row"><span>Outer ring: major &nbsp;&middot;&nbsp; inner ring: relative minor</span>' +
+      '<button class="acc-btn" id="accBtn" type="button"></button></div>';
+    document.getElementById('accBtn').addEventListener('click', onAcc);
+  }
+
+  function buildChips() {
+    document.getElementById('chips').innerHTML = TYPES.map(function (t) {
+      return '<button class="chip" type="button" data-id="' + t.id + '">' + t.label + '</button>';
+    }).join('');
+  }
+
+  function setRoot(nm) {
+    var p = parseName(nm);
+    state.rootPc = p.pc;
+    state.rootName = (nm.length > 1 && nm.charAt(nm.length - 1) === 'm') ? nm.slice(0, -1) : nm;
+    if (nm.indexOf('\u266d') >= 0) state.spelling = 'flat';
+    else if (nm.indexOf('\u266f') >= 0) state.spelling = 'sharp';
+  }
+  function pick(g) {
+    var i = Number(g.getAttribute('data-i'));
+    var entry = CIRCLE[i];
+    if (g.getAttribute('data-kind') === 'maj') {
+      setRoot(pickName(entry.maj));
+      if (state.quality === 'm') state.quality = 'maj';
+    } else {
+      setRoot(pickName(entry.min));
+      state.quality = 'm';
+    }
+    render();
+    if (window.matchMedia('(max-width: 940px)').matches) {
+      document.getElementById('infoPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+  function onAcc() {
+    var list = ENHARMONIC[state.rootPc];
+    if (!list) return;
+    state.spelling = state.spelling === 'sharp' ? 'flat' : 'sharp';
+    state.rootName = list[state.spelling === 'sharp' ? 0 : 1];
+    buildCircle();
+    render();
+  }
+
+  function updateSel() {
+    var minor = MINOR_IDS.indexOf(state.quality) >= 0;
+    var idx = minor ? MINOR_PCS.indexOf(state.rootPc) : MAJOR_PCS.indexOf(state.rootPc);
+    var kind = minor ? 'min' : 'maj';
+    var nodes = document.querySelectorAll('#circlePanel [data-kind]');
+    for (var i = 0; i < nodes.length; i++) {
+      var g = nodes[i];
+      var on = g.getAttribute('data-kind') === kind && Number(g.getAttribute('data-i')) === idx;
+      g.classList.toggle('sel', on);
+    }
+  }
+  function renderCenter() {
+    var t = typeOf(state.quality);
+    document.getElementById('ctrName').innerHTML =
+      '<tspan class="rt">' + state.rootName + '</tspan>' + t.suffix;
+    document.getElementById('ctrNotes').textContent =
+      chordNotes().map(function (n) { return n.name; }).join(' \u00b7 ');
+  }
+  function renderAcc() {
+    var btn = document.getElementById('accBtn');
+    var list = ENHARMONIC[state.rootPc];
+    if (!list) { btn.style.visibility = 'hidden'; return; }
+    btn.style.visibility = 'visible';
+    btn.textContent = 'Spell as ' + list[state.spelling === 'sharp' ? 1 : 0];
+  }
+  function renderNotes() {
+    document.getElementById('notes').innerHTML = chordNotes().map(function (n) {
+      var isRoot = n.degree === 'root';
+      return '<div class="note' + (isRoot ? ' root' : '') + '"><b>' + n.name + '</b><span>' + n.degree + '</span></div>';
+    }).join('');
+  }
+  function renderChips() {
+    var nodes = document.querySelectorAll('#chips .chip');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].classList.toggle('active', nodes[i].getAttribute('data-id') === state.quality);
+    }
+  }
+  function renderShapes() {
+    var t = typeOf(state.quality);
+    var name = state.rootName + t.suffix;
+    var shapes = findShapes(state.rootPc, state.quality, false);
+    var stretch = false;
+    if (!shapes.length) {
+      shapes = findShapes(state.rootPc, state.quality, true);
+      stretch = shapes.length > 0;
+    }
+    document.getElementById('shapeName').textContent = name;
+    document.getElementById('shapeCount').textContent =
+      shapes.length + ' ' + (shapes.length === 1 ? 'way' : 'ways') + ' to play' +
+      (stretch ? ' \u00b7 stretch voicings' : '');
+    document.getElementById('shapes').innerHTML = shapes.length
+      ? shapes.map(function (f, i) {
+          return '<div class="shape" style="animation-delay:' + Math.min(i * 25, 350) + 'ms">' +
+            diagramSVG(f) + '<div class="fr">' + f.join(' ') + '</div></div>';
+        }).join('')
+      : '<div class="empty">No four-string voicing found below the 12th fret.</div>';
+  }
+  function render() {
+    updateSel();
+    renderCenter();
+    renderAcc();
+    renderNotes();
+    renderChips();
+    renderShapes();
+  }
+
+  buildCircle();
+  buildChips();
+  document.getElementById('circlePanel').addEventListener('click', function (e) {
+    var g = e.target.closest('[data-kind]');
+    if (g) pick(g);
+  });
+  document.getElementById('circlePanel').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var g = e.target.closest('[data-kind]');
+    if (g) { e.preventDefault(); pick(g); }
+  });
+  document.getElementById('chips').addEventListener('click', function (e) {
+    var c = e.target.closest('.chip');
+    if (!c) return;
+    state.quality = c.getAttribute('data-id');
+    render();
+  });
+  render();
+})();
+</script>
+
+<script>
+setTimeout(function () {
+  var w = document.querySelector('[data-kind="maj"][data-i="7"]');
+  w.querySelector('path').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  setTimeout(function () {
+    document.querySelector('.chip[data-id="maj7"]').click();
+    setTimeout(function () {
+      document.getElementById('log').textContent = [
+        'name=' + document.getElementById('ctrName').textContent,
+        'notes=' + document.getElementById('ctrNotes').textContent,
+        'count=' + document.getElementById('shapeCount').textContent,
+        'sel=' + (document.querySelector('.sel') ? document.querySelector('.sel').getAttribute('data-kind') + document.querySelector('.sel').getAttribute('data-i') : 'none'),
+        'chip=' + (document.querySelector('.chip.active') || {}).textContent,
+        'acc=' + document.getElementById('accBtn').textContent,
+        'accVis=' + document.getElementById('accBtn').style.visibility
+      ].join(' | ');
+    }, 60);
+  }, 60);
+}, 100);
+</script>
+<div id="log"></div>
+</body>
+</html>

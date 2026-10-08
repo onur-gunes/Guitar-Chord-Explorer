@@ -123,8 +123,9 @@ main { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: 
 .shape:hover { border-color: var(--border2); transform: translateY(-2px); }
 .shape svg { width: 100%; max-width: 150px; height: auto; display: block; }
 .more { grid-column: 1/-1; text-align: center; padding: 16px; color: var(--muted); font-size: 12px; }
-.shape .fr {
-  font-size: 11.5px; color: var(--dim); letter-spacing: 0.14em;
+.snum {
+  fill: #828d9e; font-size: 10.5px; font-weight: 600;
+  text-anchor: middle; dominant-baseline: middle;
   font-variant-numeric: tabular-nums;
 }
 .st { stroke: #5f6d80; stroke-width: 1.4; }
@@ -137,7 +138,7 @@ main { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: 
   text-anchor: middle; dominant-baseline: central;
 }
 .muted {
-  fill: #98a2b3; font-size: 18px; font-weight: 800;
+  fill: #98a2b3; font-size: 15px; font-weight: 800;
   text-anchor: middle; dominant-baseline: middle;
 }
 .find-block { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 15px; }
@@ -287,15 +288,21 @@ main { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: 
     });
   }
   function playable(frets, relaxed) {
-    var nz = frets.filter(function (f) { return f > 0; });
-    if (!nz.length) return true;
-    var uniq = nz.filter(function (v, i) { return nz.indexOf(v) === i; }).sort(function (a, b) { return a - b; });
-    var span = uniq[uniq.length - 1] - uniq[0];
-    if (relaxed) return uniq.length <= 6 && span <= 7;
-    var open = frets.indexOf(0) >= 0;
-    if (open) return span <= 5;
-    if (span <= 4) return true;
-    return nz.filter(function (f) { return f === uniq[0]; }).length >= 2 && uniq.length <= 6 && span <= 6;
+    var fretted = [];
+    var sounding = 0;
+    for (var i = 0; i < 6; i++) {
+      if (frets[i] > 0) fretted.push(frets[i]);
+      if (frets[i] >= 0) sounding++;
+    }
+    if (sounding < 3) return false;
+    if (!fretted.length) return true;
+    var uniq = fretted.filter(function (v, i) { return fretted.indexOf(v) === i; });
+    var span = Math.max.apply(null, fretted) - Math.min.apply(null, fretted);
+    var maxFingers = relaxed ? 5 : 4;
+    var maxSpan = relaxed ? 6 : 4;
+    if (uniq.length > maxFingers) return false;
+    if (span > maxSpan) return false;
+    return true;
   }
   function spanOf(arr) {
     var nz = arr.filter(function (v) { return v > 0; });
@@ -303,39 +310,56 @@ main { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: 
     return Math.max.apply(null, nz) - Math.min.apply(null, nz);
   }
   function findShapes(rootPc, quality, relaxed) {
-    var out = [];
-    var isMinor = MINOR_IDS.indexOf(quality) >= 0;
-    var base, baseRoots, families;
-    if (isMinor) {
-      base = [
-        [0,2,2,0,0,0],[2,4,4,2,2,2],[4,6,6,4,4,4],[5,7,7,5,5,5],[7,9,9,7,7,7],[9,11,11,9,9,9],[0,0,2,2,1,0],[2,2,4,4,3,2],[4,4,6,6,5,4],[5,5,7,7,6,5],[7,7,9,9,8,7],[0,0,0,2,3,1],[2,2,2,4,5,3],[3,3,3,5,6,4],[5,5,5,7,8,6]
-      ];
-      baseRoots = [4,9,2];
-      families = [0,0,0,0,0,0,1,1,1,1,1,2,2,2,2];
-    } else {
-      base = [
-        [0,2,2,1,0,0],[2,4,4,3,2,2],[4,6,6,5,4,4],[5,7,7,6,5,5],[7,9,9,8,7,7],[9,11,11,10,9,9],[-1,0,2,2,2,0],[2,2,4,4,4,2],[4,4,6,6,6,4],[5,5,7,7,7,5],[7,7,9,9,9,7],[9,9,11,11,11,9],[3,2,0,0,0,3],[5,4,2,2,2,5],[7,6,4,4,4,7],[8,7,5,5,5,8],[-1,-1,0,2,3,2],[2,2,2,4,5,4],[4,4,4,6,7,6],[5,5,5,7,8,7],[-1,3,2,0,1,0],[2,5,4,2,3,2],[3,5,5,3,3,3],[5,7,7,5,5,5],[7,9,9,7,7,7]
-      ];
-      baseRoots = [4,9,7,2,0];
-      families = [0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,3,3,3,3,4,4,4,4,4];
+    var tones = typeOf(quality).tones;
+    var allowed = {}, essential = {};
+    for (var ti = 0; ti < tones.length; ti++) {
+      allowed[(rootPc + tones[ti][0]) % 12] = true;
+      if (ti !== 2) essential[(rootPc + tones[ti][0]) % 12] = true;
     }
-    for (var j=0;j<base.length;j++) {
-      var b = base[j];
-      var fam = families[j];
-      var br = baseRoots[fam];
-      var delta = (rootPc - br + 120) % 12;
-      var f = [b[0],b[1],b[2],b[3],b[4],b[5]];
-      var ok = true;
-      for (var k=0;k<6;k++) {
-        if (f[k] > 0) {
-          f[k] = f[k] + delta;
-          if (f[k] < 0 || f[k] > MAX_FRET) { ok = false; break; }
+    var cand = [];
+    for (var s = 0; s < 6; s++) {
+      var list = [-1];
+      for (var f = 0; f <= MAX_FRET; f++) {
+        if (allowed[(TUNING[s] + f) % 12]) list.push(f);
+      }
+      cand.push(list);
+    }
+    var maxFingers = relaxed ? 5 : 4;
+    var maxSpan = relaxed ? 6 : 4;
+    var out = [], seen = {}, cur = [0, 0, 0, 0, 0, 0], used = {};
+    function rec(s, minF, maxF, count) {
+      if (count > maxFingers || maxF - minF > maxSpan) return;
+      if (s === 6) {
+        if (!playable(cur, relaxed)) return;
+        var present = {}, sounding = 0, distinct = 0;
+        for (var i = 0; i < 6; i++) {
+          if (cur[i] < 0) continue;
+          sounding++;
+          var pc = (TUNING[i] + cur[i]) % 12;
+          if (!present[pc]) { present[pc] = true; distinct++; }
+        }
+        if (sounding < 3 || distinct < 3) return;
+        for (var e in essential) if (!present[e]) return;
+        var key = cur.join(',');
+        if (!seen[key]) { seen[key] = true; out.push(cur.slice()); }
+        return;
+      }
+      var cl = cand[s];
+      for (var k = 0; k < cl.length; k++) {
+        var v = cl[k];
+        cur[s] = v;
+        if (v > 0) {
+          var add = !used[v];
+          if (add) used[v] = 1;
+          rec(s + 1, v < minF ? v : minF, v > maxF ? v : maxF, count + (add ? 1 : 0));
+          if (add) delete used[v];
+        } else {
+          rec(s + 1, minF, maxF, count);
         }
       }
-      if (ok) out.push(f);
     }
-    out = out.filter(function(f){for(var i=0;i<6;i++) if(f[i]<0||f[i]>MAX_FRET)return false;return true;});
-    var seen={},out2=[]; for(var x=0;x<out.length;x++){var key=out[x].join(','); if(!seen[key]){seen[key]=true;out2.push(out[x]);}} out=out2; return out;
+    rec(0, Infinity, -Infinity, 0);
+    return out;
   }
   function diagramSVG(frets) {
     var num = frets.length || 6;
@@ -345,19 +369,20 @@ main { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: 
     var nz = frets.filter(function (f) { return f > 0; });
     var minF = nz.length ? Math.min.apply(null, nz) : 0;
     
-    var hasOpen = frets.indexOf(0) >= 0;
+    var hasMark = frets.some(function (v) { return v <= 0; });
     var maxF = Math.max.apply(null, frets.filter(function(f){return f>0;})) || 0;
     var lo = maxF <= 4 ? 0 : Math.max(minF - 1, 0);
     var showNut = lo === 0;
     var hi = Math.max(maxF + 1, lo + 4);
     var rows = hi - lo;
-    var top = hasOpen ? 26 : 16;
+    var top = hasMark ? 26 : 16;
+    var markY = top - 11;
     var H = top + rows * fg + 10;
     var yWire = function (f) { return top + (f - lo) * fg; };
     var yDot = function (f) { return top + (f - lo) * fg - fg / 2; };
     var xStr = function (i) { return padX + i * gap; };
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
-    var strTop = hasOpen ? top - 15 : yWire(lo);
+    var strTop = hasMark ? top - 15 : yWire(lo);
     for (var i = 0; i < num; i++) {
       s += '<line class="st" x1="' + xStr(i) + '" y1="' + strTop + '" x2="' + xStr(i) + '" y2="' + yWire(hi) + '"/>';
     }
@@ -369,33 +394,43 @@ main { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: 
     } else {
       s += '<text class="pos" x="9" y="' + (yWire(lo) + fg / 2) + '">' + (lo + 1) + '</text>';
     }
-    var groups = {};
-    frets.forEach(function (v, idx) {
-      if (v <= 0) return;
-      (groups[v] = groups[v] || []).push(idx);
-    });
     var covered = {};
-    Object.keys(groups).forEach(function (key) {
-      var v = Number(key), idxs = groups[key], run = [idxs[0]];
-      var flush = function () {
-        if (run.length >= 2) {
-          var x1 = xStr(run[0]), x2 = xStr(run[run.length - 1]);
-          s += '<rect class="bar" x="' + (x1 - 7) + '" y="' + (yDot(v) - 7) + '" width="' + (x2 - x1 + 14) + '" height="14" rx="7"/>';
-          run.forEach(function (ix) { covered[ix] = 1; });
-        }
-      };
-      for (var j = 1; j < idxs.length; j++) {
-        if (idxs[j] === idxs[j - 1] + 1) run.push(idxs[j]);
-        else { flush(); run = [idxs[j]]; }
+    (function () {
+      var fretted = frets.filter(function (v) { return v > 0; });
+      if (!fretted.length) return;
+      var mf = Math.min.apply(null, fretted);
+      var idxs = [];
+      frets.forEach(function (v, idx) { if (v === mf) idxs.push(idx); });
+      if (idxs.length < 2) return;
+      var lo2 = idxs[0], hi2 = idxs[idxs.length - 1], okBar = true;
+      for (var k = lo2; k <= hi2; k++) {
+        if (frets[k] === 0 || frets[k] === -1) { okBar = false; break; }
       }
-      flush();
-    });
+      if (!okBar) return;
+      if (idxs.length < 3 && (hi2 - lo2 + 1) === idxs.length) return;
+      var x1 = xStr(lo2), x2 = xStr(hi2);
+      s += '<rect class="bar" x="' + (x1 - 7) + '" y="' + (yDot(mf) - 7) + '" width="' + (x2 - x1 + 14) + '" height="14" rx="7"/>';
+      idxs.forEach(function (ix) { covered[ix] = 1; });
+    })();
     frets.forEach(function (fr, idx) {
       if (covered[idx]) return;
-      if (fr === 0) s += '<circle class="oc" cx="' + xStr(idx) + '" cy="' + (top - 9) + '" r="4.5"/>';
-      else if (fr === -1) s += '<text class="muted" x="' + xStr(idx) + '" y="' + (top - 2) + '" text-anchor="middle">×</text>';
+      if (fr === 0) s += '<circle class="oc" cx="' + xStr(idx) + '" cy="' + markY + '" r="4.5"/>';
+      else if (fr === -1) s += '<text class="muted" x="' + xStr(idx) + '" y="' + markY + '" text-anchor="middle">×</text>';
       else s += '<circle class="dot" cx="' + xStr(idx) + '" cy="' + yDot(fr) + '" r="7"/>';
     });
+    return s + '</svg>';
+  }
+  function fretLabelsSVG(frets) {
+    var num = frets.length || 6;
+    var W = num === 6 ? 160 : 104;
+    var padX = 22;
+    var gap = (W - 2 * padX) / (num - 1);
+    var H = 14;
+    var s = '<svg class="flabels" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">';
+    for (var i = 0; i < num; i++) {
+      var label = frets[i] < 0 ? 'x' : String(frets[i]);
+      s += '<text class="snum" x="' + (padX + i * gap) + '" y="' + (H / 2) + '">' + label + '</text>';
+    }
     return s + '</svg>';
   }
 
@@ -642,31 +677,80 @@ main { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: 
       nodes[i].classList.toggle('active', nodes[i].getAttribute('data-id') === state.quality);
     }
   }
+  var CANON = {
+    maj: { '0': [-1,3,2,0,1,0], '9': [-1,0,2,2,2,0], '7': [3,2,0,0,0,3], '4': [0,2,2,1,0,0], '2': [-1,-1,0,2,3,2], '5': [1,3,3,2,1,1] },
+    m: { '9': [-1,0,2,2,1,0], '4': [0,2,2,0,0,0], '2': [-1,-1,0,2,3,1] },
+    '7': { '0': [-1,3,2,3,1,0], '9': [-1,0,2,0,2,0], '7': [3,2,0,0,0,1], '4': [0,2,0,1,0,0], '2': [-1,-1,0,2,1,2], '11': [-1,2,1,2,0,2] },
+    maj7: { '0': [-1,3,2,0,0,0], '9': [-1,0,2,1,2,0], '7': [3,2,0,0,0,2], '4': [0,2,1,1,0,0], '2': [-1,-1,0,2,2,2], '5': [-1,-1,3,2,1,0] },
+    m7: { '9': [-1,0,2,0,1,0], '4': [0,2,0,0,0,0], '2': [-1,-1,0,2,1,1], '11': [-1,2,0,2,0,2] },
+    sus4: { '9': [-1,0,2,2,3,0], '4': [0,2,2,2,0,0], '2': [-1,-1,0,2,3,3], '7': [3,3,0,0,1,3] },
+    sus2: { '9': [-1,0,2,2,0,0], '2': [-1,-1,0,2,3,0], '4': [0,2,4,4,0,0] },
+    '6': { '0': [-1,3,2,2,1,0], '9': [-1,0,2,2,2,2], '2': [-1,-1,0,2,0,2], '7': [3,2,0,0,0,0] },
+    m6: { '9': [-1,0,2,2,1,2], '2': [-1,-1,0,2,0,1], '4': [0,2,2,0,2,0] },
+    add9: { '0': [-1,3,2,0,3,3], '4': [0,2,2,1,0,2], '9': [-1,0,2,4,2,0] },
+    '9': { '0': [-1,3,2,3,3,-1] },
+    m9: { '0': [-1,3,1,3,3,-1] },
+    maj9: { '0': [-1,3,2,4,3,-1] },
+    dim: { '0': [-1,3,4,5,4,-1] },
+    dim7: { '0': [-1,3,4,2,4,-1] },
+    aug: { '0': [-1,3,2,1,1,0] },
+    m7b5: { '0': [-1,3,4,3,4,-1], '11': [-1,2,3,2,3,-1] },
+    '7sus4': { '0': [-1,3,3,3,1,1], '2': [-1,-1,0,2,1,3] }
+  };
+  function shapeRank(frets) {
+    var fretted = [], open = 0, sounding = 0, bass = -1, bassPc = -1;
+    for (var i = 0; i < 6; i++) {
+      var v = frets[i];
+      if (v > 0) fretted.push(v);
+      if (v === 0) open++;
+      if (v >= 0) {
+        sounding++;
+        var p = TUNING[i] + v;
+        if (bass < 0 || p < bass) { bass = p; bassPc = p % 12; }
+      }
+    }
+    var minF = fretted.length ? Math.min.apply(null, fretted) : 0;
+    var maxF = fretted.length ? Math.max.apply(null, fretted) : 0;
+    return {
+      rootBass: bassPc === ((state.rootPc % 12) + 12) % 12 ? 0 : 1,
+      minF: minF,
+      fingers: uniqSorted(fretted).length,
+      span: maxF - minF,
+      open: -open,
+      sounding: -sounding,
+      pattern: frets.join(',')
+    };
+  }
+  function sortShapes(shapes) {
+    var group = CANON[state.quality];
+    var want = group ? group[state.rootPc] : null;
+    var wantKey = want ? want.join(',') : null;
+    var keyed = shapes.map(function (f) {
+      return { f: f, canon: wantKey && f.join(',') === wantKey ? 0 : 1, r: shapeRank(f) };
+    });
+    keyed.sort(function (a, b) {
+      if (a.canon !== b.canon) return a.canon - b.canon;
+      var x = a.r, y = b.r;
+      if (x.rootBass !== y.rootBass) return x.rootBass - y.rootBass;
+      if (x.minF !== y.minF) return x.minF - y.minF;
+      if (x.sounding !== y.sounding) return x.sounding - y.sounding;
+      if (x.open !== y.open) return x.open - y.open;
+      if (x.fingers !== y.fingers) return x.fingers - y.fingers;
+      if (x.span !== y.span) return x.span - y.span;
+      return x.pattern < y.pattern ? -1 : (x.pattern > y.pattern ? 1 : 0);
+    });
+    return keyed.map(function (k) { return k.f; });
+  }
   function renderShapes() {
     var t = typeOf(state.quality);
     var name = state.rootName + t.suffix;
     var shapes = findShapes(state.rootPc, state.quality, false);
-    if (!state.showAll) {
-      shapes = shapes.filter(function(f) {
-        var nz = f.filter(function(v){return v>0});
-        if (!nz.length) return true;
-        if (nz.length > 5) return false;
-        var max = Math.max.apply(null, nz);
-        if (max > 4) return false;
-        var bassIdx = -1, bassFret = 999;
-        for (var bi = 0; bi < f.length; bi++) {
-          if (f[bi] > 0 && f[bi] < bassFret) { bassFret = f[bi]; bassIdx = bi; }
-        }
-        if (bassIdx > 3) return false;
-        return true;
-      });
-    }
     var stretch = false;
     if (!shapes.length) {
       shapes = findShapes(state.rootPc, state.quality, true);
-
       stretch = shapes.length > 0;
     }
+    shapes = sortShapes(shapes);
     document.getElementById('shapeName').textContent = name;
     document.getElementById('shapeCount').textContent =
       shapes.length + ' ' + (shapes.length === 1 ? 'way' : 'ways') + ' to play' +
@@ -675,15 +759,16 @@ main { display: grid; grid-template-columns: 400px 1fr; gap: 34px; align-items: 
     if (!state.showAll) {
       shown = shown.slice(0, 15);
     } else {
-      shown = shown.slice(0, 50);
+      shown = shown.slice(0, 60);
     }
     var allBtn = document.getElementById('allBtn');
     if (allBtn) allBtn.textContent = state.showAll ? 'Show common' : 'Show all';
     document.getElementById('shapes').innerHTML = shown.length
       ? (shown.map(function (f, i) {
           var svg = diagramSVG(f);
-          return '<div class="shape" style="animation-delay:' + Math.min(i * 25, 350) + 'ms" data-frets="' + f.join(' ') + '">' +
-            svg + '<div class="fr">' + f.join(' ') + '</div></div>';
+          var label = f.map(function (v) { return v < 0 ? 'x' : String(v); }).join(' ');
+          return '<div class="shape" style="animation-delay:' + Math.min(i * 25, 350) + 'ms" data-frets="' + label + '">' +
+            svg + fretLabelsSVG(f) + '</div>';
         }).join('') + ((shapes.length > shown.length) ? '<div class="more">Showing top ' + shown.length + ' of ' + shapes.length + '</div>' : ''))
       : '<div class="empty">No six-string voicing found below the 12th fret.</div>';
   }

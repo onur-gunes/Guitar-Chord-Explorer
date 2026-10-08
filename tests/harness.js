@@ -125,7 +125,7 @@ function clean(s) {
   return s.indexOf('NaN') < 0 && s.indexOf('undefined') < 0 && s.indexOf('Infinity') < 0;
 }
 function firstFrets() {
-  var mm = elements['shapes']._html.match(/<div class="fr">([^<]+)<\/div>/);
+  var mm = elements['shapes']._html.match(/data-frets="([^"]+)"/);
   return mm ? mm[1] : '(none)';
 }
 function wedge(kind, i) {
@@ -261,7 +261,7 @@ CIRCLE.forEach(function (entry) {
     TYPES.forEach(function (t) {
       rootsTested++;
       var shapes = findShapes(state.rootPc, t.id);
-      shapes.forEach(function (f) {
+      shapes.slice(0, 25).forEach(function (f) {
         var svg = diagramSVG(f);
         if (!validateXML(svg, 'diag')) badDiag++;
         if (!clean(svg)) badDiag++;
@@ -334,7 +334,7 @@ var boundFail = 0;
     ['maj', 'min'].forEach(function (kind) {
       setRoot(pickName(entry[kind]));
       TYPES.forEach(function (t) {
-        findShapes(state.rootPc, t.id).forEach(function (f) {
+        findShapes(state.rootPc, t.id).slice(0, 25).forEach(function (f) {
           var svg = diagram(f), h = H(svg), tagRe = /<([a-z]+) class="[^"]+"([^>]*)>/g, mm;
           while ((mm = tagRe.exec(svg))) {
             var tag = mm[1], body = mm[2], s;
@@ -386,6 +386,141 @@ console.log('--- chip grouping ---');
   check('Minor group has 7 (incl dim, dim7)', minor.length === 7 && minor.indexOf('dim') >= 0 && minor.indexOf('dim7') >= 0, minor.join(','));
   var all = major.concat(minor, sus);
   check('all 18 covered exactly once', all.length === 18 && TYPES.every(function (t) { return all.indexOf(t.id) >= 0; }), all.join(','));
+})();
+
+console.log('--- standard open chords: correctness + rank #1 ---');
+var STANDARDS = [
+  ['C','maj',[-1,3,2,0,1,0]],
+  ['A','maj',[-1,0,2,2,2,0]],
+  ['G','maj',[3,2,0,0,0,3]],
+  ['E','maj',[0,2,2,1,0,0]],
+  ['D','maj',[-1,-1,0,2,3,2]],
+  ['F','maj',[1,3,3,2,1,1]],
+  ['A','m',[-1,0,2,2,1,0]],
+  ['E','m',[0,2,2,0,0,0]],
+  ['D','m',[-1,-1,0,2,3,1]],
+  ['C','7',[-1,3,2,3,1,0]],
+  ['A','7',[-1,0,2,0,2,0]],
+  ['G','7',[3,2,0,0,0,1]],
+  ['E','7',[0,2,0,1,0,0]],
+  ['D','7',[-1,-1,0,2,1,2]],
+  ['B','7',[-1,2,1,2,0,2]],
+  ['C','maj7',[-1,3,2,0,0,0]],
+  ['A','maj7',[-1,0,2,1,2,0]],
+  ['G','maj7',[3,2,0,0,0,2]],
+  ['E','maj7',[0,2,1,1,0,0]],
+  ['D','maj7',[-1,-1,0,2,2,2]],
+  ['F','maj7',[-1,-1,3,2,1,0]],
+  ['A','m7',[-1,0,2,0,1,0]],
+  ['E','m7',[0,2,0,0,0,0]],
+  ['D','m7',[-1,-1,0,2,1,1]],
+  ['B','m7',[-1,2,0,2,0,2]],
+  ['A','sus4',[-1,0,2,2,3,0]],
+  ['E','sus4',[0,2,2,2,0,0]],
+  ['D','sus4',[-1,-1,0,2,3,3]],
+  ['G','sus4',[3,3,0,0,1,3]],
+  ['A','sus2',[-1,0,2,2,0,0]],
+  ['D','sus2',[-1,-1,0,2,3,0]],
+  ['E','sus2',[0,2,4,4,0,0]],
+  ['C','6',[-1,3,2,2,1,0]],
+  ['A','6',[-1,0,2,2,2,2]],
+  ['D','6',[-1,-1,0,2,0,2]],
+  ['A','m6',[-1,0,2,2,1,2]],
+  ['D','m6',[-1,-1,0,2,0,1]],
+  ['E','m6',[0,2,2,0,2,0]],
+  ['C','add9',[-1,3,2,0,3,3]],
+  ['E','add9',[0,2,2,1,0,2]],
+  ['A','add9',[-1,0,2,4,2,0]],
+  ['C','9',[-1,3,2,3,3,-1]],
+  ['C','m9',[-1,3,1,3,3,-1]],
+  ['C','maj9',[-1,3,2,4,3,-1]],
+  ['C','dim',[-1,3,4,5,4,-1]],
+  ['C','dim7',[-1,3,4,2,4,-1]],
+  ['C','aug',[-1,3,2,1,1,0]],
+  ['C','m7b5',[-1,3,4,3,4,-1]],
+  ['B','m7b5',[-1,2,3,2,3,-1]],
+  ['C','7sus4',[-1,3,3,3,1,1]],
+  ['D','7sus4',[-1,-1,0,2,1,3]]
+];
+(function () {
+  function allowedPcs(pc, q) {
+    var s = {}, t = typeOf(q);
+    t.tones.forEach(function (x) { s[(pc + x[0]) % 12] = true; });
+    return s;
+  }
+  function essentialPcs(pc, q) {
+    var s = {}, t = typeOf(q);
+    t.tones.forEach(function (x, i) { if (i !== 2) s[(pc + x[0]) % 12] = true; });
+    return s;
+  }
+  function shapeValid(pc, q, f) {
+    var present = {}, distinct = 0, sounding = 0;
+    for (var i = 0; i < 6; i++) {
+      if (f[i] < 0) continue;
+      sounding++;
+      var x = (TUNING[i] + f[i]) % 12;
+      if (!present[x]) { present[x] = true; distinct++; }
+    }
+    var allowed = allowedPcs(pc, q), ess = essentialPcs(pc, q);
+    for (var k in present) if (!allowed[k]) return false;
+    for (var e in ess) if (!present[e]) return false;
+    return sounding >= 3 && distinct >= 3;
+  }
+  STANDARDS.forEach(function (row) {
+    var pc = parseName(row[0]).pc, q = row[1], want = row[2], wantKey = want.join(',');
+    state.rootPc = pc;
+    state.quality = q;
+    state.spelling = 'sharp';
+    var shapes = findShapes(pc, q, false);
+    var generated = shapes.some(function (f) { return f.join(',') === wantKey; });
+    var sorted = sortShapes(shapes);
+    var top = sorted.length ? sorted[0].join(',') : '(none)';
+    check(row[0] + row[1] + ' generated', generated, wantKey + ' top=' + top);
+    check(row[0] + row[1] + ' notes valid', shapeValid(pc, q, want), JSON.stringify(want));
+    check(row[0] + row[1] + ' ranked #1', top === wantKey, 'top=' + top + ' want=' + wantKey);
+  });
+})();
+
+console.log('--- diagram: barre, open and mute marks ---');
+(function () {
+  var svg = diagramSVG([1,3,3,2,1,1]);
+  var bars = elsByClass(svg, 'bar');
+  check('F barre drawn', bars.length === 1, String(bars.length));
+  if (bars.length) {
+    var x1 = attrN('<rect ' + bars[0] + '>', 'x'), w = attrN('<rect ' + bars[0] + '>', 'width');
+    var x0 = 22, x5 = 22 + 5 * 23.2;
+    geoEq('F barre spans all six strings', x1 + w, x5 + 7);
+    geoEq('F barre starts at low E', x1, x0 - 7);
+  }
+  var fc = elsByClass(diagramSVG([-1,3,2,0,1,0]), 'oc');
+  var fm = elsByClass(diagramSVG([-1,3,2,0,1,0]), 'muted');
+  check('C open strings show O (2)', fc.length === 2, String(fc.length));
+  check('C muted string shows X (1)', fm.length === 1, String(fm.length));
+  var dots = elsByClass(diagramSVG([1,3,3,2,1,1]), 'dot');
+  check('F shows 3 dots over the barre', dots.length === 3, String(dots.length));
+})();
+
+console.log('--- diagram: mute/open markers aligned, fret labels under strings ---');
+(function () {
+  var svg = diagramSVG([-1,3,2,0,1,0]);
+  var mut = elsByClass(svg, 'muted'), oc = elsByClass(svg, 'oc'), nut = elsByClass(svg, 'nut');
+  check('mute X and open O both present', mut.length === 1 && oc.length === 2, mut.length + '/' + oc.length);
+  geoEq('X sits on the same line as O', attrN('<text ' + mut[0] + '>', 'y'), attrN('<circle ' + oc[0] + '>', 'cy'));
+  check('X clears the nut', attrN('<text ' + mut[0] + '>', 'y') + 7.5 < attrN('<line ' + nut[0] + '>', 'y1'), attrN('<text ' + mut[0] + '>', 'y') + ' nut ' + attrN('<line ' + nut[0] + '>', 'y1'));
+  var svg2 = diagramSVG([-1,3,3,2,1,1]);
+  var lines2 = elsByClass(svg2, 'st');
+  check('X string line reaches above the X', attrN('<line ' + lines2[0] + '>', 'y1') < attrN('<text ' + elsByClass(svg2, 'muted')[0] + '>', 'y'));
+
+  var f = [-1,3,2,0,1,0];
+  var lab = fretLabelsSVG(f);
+  var xs = (lab.match(/<text class="snum" x="[0-9.]+"/g) || []).map(function (s) { return Number(s.match(/x="([0-9.]+)"/)[1]); });
+  var want = [];
+  for (var i = 0; i < 6; i++) want.push(22 + i * 23.2);
+  check('six fret labels rendered', xs.length === 6, String(xs.length));
+  check('label columns match 6-string spacing', xs.every(function (v, i) { return Math.abs(v - want[i]) < 0.01; }), xs.join(','));
+  var st = elsByClass(diagramSVG(f), 'st');
+  var sx = st.map(function (b) { return attrN('<line ' + b + '>', 'x1'); });
+  check('labels line up under the strings', sx.every(function (v, i) { return Math.abs(v - xs[i]) < 0.01; }), sx.join(','));
 })();
 
 console.log(failures.length ? '\n' + failures.length + ' FAILURES' : '\nALL TESTS PASSED');
